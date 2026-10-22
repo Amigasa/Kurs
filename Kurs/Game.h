@@ -3,6 +3,7 @@
 #include <vector>
 #include "Constants.h"
 #include "Player.h"
+#include "Enemy.h"
 
 class Game {
 public:
@@ -10,6 +11,7 @@ public:
     void Run();
 
 private:
+    std::vector<Enemy> enemies;
     void CastRays();
     void DrawHUD();
 

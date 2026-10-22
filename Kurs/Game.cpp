@@ -5,6 +5,7 @@
 Game::Game() : window(sf::VideoMode(SCREEN_WIDTH, SCREEN_HEIGHT), "RootEvil - Raycaster") {
     window.setFramerateLimit(60);
 
+    // Карта (1 - стена, 0 - пусто)
     int tempMap[MAP_HEIGHT][MAP_WIDTH] = {
         {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
         {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
@@ -38,6 +39,7 @@ Game::Game() : window(sf::VideoMode(SCREEN_WIDTH, SCREEN_HEIGHT), "RootEvil - Ra
 
     depthBuffer.resize(SCREEN_WIDTH);
 
+    // Загрузка шрифта
     if (!font.loadFromFile("Resources/arial.ttf")) {
         std::cout << "Error loading font!" << std::endl;
     }
@@ -45,6 +47,13 @@ Game::Game() : window(sf::VideoMode(SCREEN_WIDTH, SCREEN_HEIGHT), "RootEvil - Ra
     hudText.setCharacterSize(24);
     hudText.setFillColor(sf::Color::White);
     hudText.setPosition(20.f, 20.f);
+
+    // ==========================================
+    // СОЗДАНИЕ МОНСТРОВ
+    // ==========================================
+    enemies.push_back(Enemy(5.5f, 5.5f));
+    enemies.push_back(Enemy(10.5f, 10.5f));
+    enemies.push_back(Enemy(5.5f, 10.5f));
 }
 
 void Game::Run() {
@@ -55,11 +64,30 @@ void Game::Run() {
             if (event.type == sf::Event::Closed) window.close();
         }
 
+        // Обновляем игрока
         player.Update(dt, map);
 
+        // Обновляем монстров (они идут к игроку)
+        for (auto& enemy : enemies) {
+            enemy.Update(dt, player.position);
+        }
+
         window.clear(sf::Color(30, 30, 30));
+
+        // 1. Рисуем стены
         CastRays();
+
+        // 2. Рисуем монстров поверх стен (с проверкой глубины)
+        for (auto& enemy : enemies) {
+            enemy.Draw(window, player.position, player.angle, depthBuffer);
+        }
+
+        // 3. Рисуем оружие поверх всего
+        window.draw(player.weaponSprite);
+
+        // 4. Рисуем HUD
         DrawHUD();
+
         window.display();
     }
 }
@@ -89,9 +117,13 @@ void Game::CastRays() {
         }
 
         distance *= cos(rayAngle - player.angle);
+
+        // Защита от красного экрана (дистанция не может быть 0)
+        if (distance < 0.1f) distance = 0.1f;
+
         depthBuffer[x] = distance;
 
-        int wallHeight = (int)(SCREEN_HEIGHT / (distance + 0.001f));
+        int wallHeight = (int)(SCREEN_HEIGHT / distance);
         if (wallHeight > SCREEN_HEIGHT) wallHeight = SCREEN_HEIGHT;
         int drawStart = SCREEN_HEIGHT / 2 - wallHeight / 2;
 
