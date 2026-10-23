@@ -1,5 +1,6 @@
 #pragma once
 #include <SFML/Graphics.hpp>
+#include <vector>
 
 class Enemy {
 public:
@@ -10,7 +11,5 @@ public:
     sf::Vector2f position;
     int health;
     bool isAlive;
-
     sf::Sprite sprite;
-    static sf::Texture texture; // Текстура общая для всех монстров
 };

@@ -11,7 +11,6 @@ public:
     void Run();
 
 private:
-    std::vector<Enemy> enemies;
     void CastRays();
     void DrawHUD();
 
@@ -19,8 +18,18 @@ private:
     Player player;
     int map[MAP_HEIGHT][MAP_WIDTH];
     std::vector<float> depthBuffer;
+    std::vector<Enemy> enemies;
 
     sf::Font font;
     sf::Text hudText;
     sf::Clock clock;
+
+    // Состояния игры
+    GameState currentState = GameState::Menu;
+    sf::Text menuText;
+    sf::Text pauseText;
+
+    // Здоровье
+    sf::RectangleShape healthBarBg;
+    sf::RectangleShape healthBarFill;
 };
