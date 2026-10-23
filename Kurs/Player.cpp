@@ -8,17 +8,28 @@ Player::Player() {
     health = MAX_HEALTH;
     ammo = MAX_AMMO;
 
-    if (weaponTexture.loadFromFile("Resources/shotgun.png")) {
-        weaponSprite.setTexture(weaponTexture);
-        weaponSprite.setScale(0.5f, 0.5f);
-        weaponSprite.setPosition(SCREEN_WIDTH / 2.f - 100.f, SCREEN_HEIGHT - 200.f);
+    // Загружаем текстуры ТОЛЬКО ОДИН РАЗ
+    static sf::Texture weaponTex;
+    static sf::Texture flashTex;
+    static bool loaded = false;
+
+    if (!loaded) {
+        if (!weaponTex.loadFromFile("Resources/shotgun.png")) {
+            std::cout << "Error: shotgun.png not found!" << std::endl;
+        }
+        if (!flashTex.loadFromFile("Resources/muzzle_flash.png")) {
+            std::cout << "Error: muzzle_flash.png not found!" << std::endl;
+        }
+        loaded = true;
     }
 
-    if (flashTexture.loadFromFile("Resources/muzzle_flash.png")) {
-        flashSprite.setTexture(flashTexture);
-        flashSprite.setPosition(SCREEN_WIDTH / 2.f - 175.f, SCREEN_HEIGHT - 325.f);
-        flashSprite.setScale(0.5f, 0.5f);
-    }
+    weaponSprite.setTexture(weaponTex);
+    weaponSprite.setScale(0.5f, 0.5f);
+    weaponSprite.setPosition(SCREEN_WIDTH / 2.f - 100.f, SCREEN_HEIGHT - 200.f);
+
+    flashSprite.setTexture(flashTex);
+    flashSprite.setScale(0.5f, 0.5f);
+    flashSprite.setPosition(SCREEN_WIDTH / 2.f - 150.f, SCREEN_HEIGHT - 350.f);
 }
 
 void Player::Update(float dt, int map[MAP_HEIGHT][MAP_WIDTH]) {
@@ -47,9 +58,7 @@ void Player::Update(float dt, int map[MAP_HEIGHT][MAP_WIDTH]) {
         }
     }
 
-    if (sf::Mouse::isButtonPressed(sf::Mouse::Left) && canShoot && ammo > 0) {
-        Shoot();
-    }
+    // Убрали проверку клика отсюда (она теперь в Game.cpp)
 
     if (flashTimer > 0.f) flashTimer -= dt;
 }

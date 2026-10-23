@@ -117,6 +117,7 @@ void Game::Run() {
         while (window.pollEvent(event)) {
             if (event.type == sf::Event::Closed) window.close();
 
+            // --- ЛОГИКА МЕНЮ ---
             if (currentState == GameState::Menu) {
                 if (event.type == sf::Event::KeyPressed) {
                     if (event.key.code == sf::Keyboard::Up || event.key.code == sf::Keyboard::W) {
@@ -138,17 +139,64 @@ void Game::Run() {
                     }
                 }
             }
+            // --- ЛОГИКА ПАУЗЫ ---
             else if (currentState == GameState::Paused) {
-                if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Enter) {
-                    currentState = GameState::Playing;
-                    window.setMouseCursorVisible(false);
-                    sf::Mouse::setPosition(sf::Vector2i(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2), window);
+                if (event.type == sf::Event::KeyPressed) {
+                    if (event.key.code == sf::Keyboard::Up || event.key.code == sf::Keyboard::W) {
+                        pauseSelection--;
+                        if (pauseSelection < 0) pauseSelection = 1;
+                    }
+                    if (event.key.code == sf::Keyboard::Down || event.key.code == sf::Keyboard::S) {
+                        pauseSelection++;
+                        if (pauseSelection > 1) pauseSelection = 0;
+                    }
+                    if (event.key.code == sf::Keyboard::Enter) {
+                        if (pauseSelection == 0) {
+                            currentState = GameState::Playing;
+                            window.setMouseCursorVisible(false);
+                            sf::Mouse::setPosition(sf::Vector2i(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2), window);
+                        }
+                        else {
+                            currentState = GameState::Menu;
+                            window.setMouseCursorVisible(true);
+                        }
+                    }
+                    if (event.key.code == sf::Keyboard::Escape) {
+                        currentState = GameState::Playing;
+                        window.setMouseCursorVisible(false);
+                        sf::Mouse::setPosition(sf::Vector2i(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2), window);
+                    }
                 }
             }
+            // --- ЛОГИКА СМЕРТИ ---
+            else if (currentState == GameState::GameOver) {
+                if (event.type == sf::Event::KeyPressed) {
+                    if (event.key.code == sf::Keyboard::Up || event.key.code == sf::Keyboard::Down ||
+                        event.key.code == sf::Keyboard::W || event.key.code == sf::Keyboard::S) {
+                        gameOverSelection = 1 - gameOverSelection; // Переключаем 0 и 1
+                    }
+                    if (event.key.code == sf::Keyboard::Enter) {
+                        if (gameOverSelection == 0) {
+                            player = Player();
+                            for (auto& e : enemies) e.isAlive = true;
+                            currentState = GameState::Playing;
+                            window.setMouseCursorVisible(false);
+                            sf::Mouse::setPosition(sf::Vector2i(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2), window);
+                        }
+                        else {
+                            currentState = GameState::Menu;
+                            window.setMouseCursorVisible(true);
+                            menuSelection = 0;
+                        }
+                    }
+                }
+            }
+            // --- ЛОГИКА ИГРЫ ---
             else if (currentState == GameState::Playing) {
                 if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
                     currentState = GameState::Paused;
                     window.setMouseCursorVisible(true);
+                    pauseSelection = 0;
                 }
 
                 if (event.type == sf::Event::MouseMoved) {
@@ -157,10 +205,10 @@ void Game::Run() {
                     sf::Mouse::setPosition(sf::Vector2i(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2), window);
                 }
 
-                // --- НОВАЯ ЛОГИКА СТРЕЛЬБЫ ---
+                // СТРЕЛЬБА
                 if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
                     if (player.canShoot && player.ammo > 0) {
-                        player.Shoot(); // Уменьшаем патроны и включаем вспышку
+                        player.Shoot();
 
                         for (auto& enemy : enemies) {
                             if (!enemy.isAlive) continue;
@@ -175,12 +223,12 @@ void Game::Run() {
 
                             if (std::abs(angleDiff) < 0.15f) {
                                 enemy.health -= SHOTGUN_DAMAGE;
-                                enemy.hitTimer = 0.1f; // Монстр краснеет
+                                enemy.hitTimer = 0.1f;
 
                                 if (enemy.health <= 0) {
                                     enemy.isAlive = false;
                                 }
-                                break; // Дробовик бьет только одного
+                                break;
                             }
                         }
                     }
@@ -190,6 +238,7 @@ void Game::Run() {
 
         window.clear(sf::Color(30, 30, 30));
 
+        // --- ОТРИСОВКА ---
         if (currentState == GameState::Menu) {
             window.draw(menuBgSprite);
             window.draw(darkOverlay);
@@ -206,7 +255,6 @@ void Game::Run() {
             sf::FloatRect bounds = menuHint.getLocalBounds();
             menuHint.setOrigin(bounds.left + bounds.width / 2.0f, bounds.top + bounds.height / 2.0f);
             menuHint.setPosition(SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f + 20.f);
-
             window.draw(menuHint);
         }
         else if (currentState == GameState::Playing) {
@@ -227,6 +275,8 @@ void Game::Run() {
             if (player.health <= 0) {
                 player.health = 0;
                 currentState = GameState::GameOver;
+                window.setMouseCursorVisible(true);
+                gameOverSelection = 0;
             }
 
             CastRays();
@@ -242,6 +292,18 @@ void Game::Run() {
             darkOverlay.setFillColor(sf::Color(0, 0, 0, 180));
             window.draw(darkOverlay);
             window.draw(pauseTitle);
+
+            if (pauseSelection == 0) {
+                pauseHint.setString("> RESUME <\n   EXIT   ");
+                pauseHint.setFillColor(sf::Color::Yellow);
+            }
+            else {
+                pauseHint.setString("   RESUME   \n> EXIT <");
+                pauseHint.setFillColor(sf::Color::White);
+            }
+            sf::FloatRect b = pauseHint.getLocalBounds();
+            pauseHint.setOrigin(b.left + b.width / 2.0f, b.top + b.height / 2.0f);
+            pauseHint.setPosition(SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f + 20.f);
             window.draw(pauseHint);
         }
         else if (currentState == GameState::GameOver) {
@@ -250,24 +312,21 @@ void Game::Run() {
             window.draw(darkOverlay);
 
             menuTitle.setString("YOU DIED");
-            menuHint.setString("RESTART");
 
+            if (gameOverSelection == 0) {
+                menuHint.setString("> RESTART <\n  MAIN MENU  ");
+                menuHint.setFillColor(sf::Color::Yellow);
+            }
+            else {
+                menuHint.setString("  RESTART  \n> MAIN MENU <");
+                menuHint.setFillColor(sf::Color::White);
+            }
             sf::FloatRect bounds = menuHint.getLocalBounds();
             menuHint.setOrigin(bounds.left + bounds.width / 2.0f, bounds.top + bounds.height / 2.0f);
             menuHint.setPosition(SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f + 20.f);
 
             window.draw(menuTitle);
             window.draw(menuHint);
-
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Enter)) {
-                player = Player();
-                for (auto& e : enemies) e.isAlive = true;
-                currentState = GameState::Playing;
-                window.setMouseCursorVisible(false);
-                sf::Mouse::setPosition(sf::Vector2i(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2), window);
-
-                menuTitle.setString("ROOT EVIL");
-            }
         }
 
         window.display();

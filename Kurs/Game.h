@@ -40,4 +40,6 @@ private:
     sf::RectangleShape darkOverlay;
 
     int menuSelection = 0;
+    int pauseSelection = 0;
+    int gameOverSelection = 0;
 };
