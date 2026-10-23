@@ -12,4 +12,6 @@ public:
     int health;
     bool isAlive;
     sf::Sprite sprite;
+
+    float hitTimer = 0.f;
 };

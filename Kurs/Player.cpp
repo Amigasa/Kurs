@@ -8,14 +8,12 @@ Player::Player() {
     health = MAX_HEALTH;
     ammo = MAX_AMMO;
 
-    // Загрузка оружия
     if (weaponTexture.loadFromFile("Resources/shotgun.png")) {
         weaponSprite.setTexture(weaponTexture);
         weaponSprite.setScale(0.5f, 0.5f);
         weaponSprite.setPosition(SCREEN_WIDTH / 2.f - 100.f, SCREEN_HEIGHT - 200.f);
     }
 
-    // Загрузка вспышки (если нет картинки, вспышка просто не появится)
     if (flashTexture.loadFromFile("Resources/muzzle_flash.png")) {
         flashSprite.setTexture(flashTexture);
         flashSprite.setPosition(SCREEN_WIDTH / 2.f - 175.f, SCREEN_HEIGHT - 325.f);
@@ -26,7 +24,6 @@ Player::Player() {
 void Player::Update(float dt, int map[MAP_HEIGHT][MAP_WIDTH]) {
     float moveSpeed = PLAYER_SPEED * dt;
 
-    // WASD (движение и стрейф)
     float dx = cos(angle) * moveSpeed;
     float dy = sin(angle) * moveSpeed;
 
@@ -39,11 +36,9 @@ void Player::Update(float dt, int map[MAP_HEIGHT][MAP_WIDTH]) {
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) { newX -= strafeDx; newY -= strafeDy; }
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::D)) { newX += strafeDx; newY += strafeDy; }
 
-    // Коллизии
     if (map[(int)position.y][(int)newX] == 0) position.x = newX;
     if (map[(int)newY][(int)position.x] == 0) position.y = newY;
 
-    // Кулдаун и стрельба (ЛКМ)
     if (!canShoot) {
         shootTimer += dt;
         if (shootTimer >= SHOTGUN_COOLDOWN) {
@@ -56,13 +51,12 @@ void Player::Update(float dt, int map[MAP_HEIGHT][MAP_WIDTH]) {
         Shoot();
     }
 
-    // Таймер вспышки
     if (flashTimer > 0.f) flashTimer -= dt;
 }
 
 void Player::Shoot() {
     ammo--;
     canShoot = false;
-    flashTimer = 0.1f; // Вспышка на 0.1 сек
+    flashTimer = 0.1f;
     std::cout << "BANG! Ammo left: " << ammo << std::endl;
 }

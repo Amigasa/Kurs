@@ -38,7 +38,6 @@ Game::Game() : window(sf::VideoMode(SCREEN_WIDTH, SCREEN_HEIGHT), "RootEvil - Ra
 
     depthBuffer.resize(SCREEN_WIDTH);
 
-    // Шрифт
     if (!font.loadFromFile("Resources/arial.ttf")) std::cout << "Error font!" << std::endl;
 
     hudText.setFont(font);
@@ -46,18 +45,53 @@ Game::Game() : window(sf::VideoMode(SCREEN_WIDTH, SCREEN_HEIGHT), "RootEvil - Ra
     hudText.setFillColor(sf::Color::White);
     hudText.setPosition(20.f, 20.f);
 
-    // Текст меню
-    menuText.setFont(font);
-    menuText.setCharacterSize(48);
-    menuText.setFillColor(sf::Color::Yellow);
-    menuText.setString("ROOT EVIL\n\nPress ENTER to Start\nPress ESC to Exit");
-    menuText.setPosition(SCREEN_WIDTH / 2.f - 250.f, SCREEN_HEIGHT / 2.f - 100.f);
+    // Настройка фона меню
+    if (!menuBgTexture.loadFromFile("Resources/menu_bg.png")) {
+        std::cout << "Ошибка загрузки фона меню!" << std::endl;
+    }
+    menuBgSprite.setTexture(menuBgTexture);
+    sf::Vector2u bgSize = menuBgTexture.getSize();
+    if (bgSize.x > 0 && bgSize.y > 0) {
+        menuBgSprite.setScale((float)SCREEN_WIDTH / bgSize.x, (float)SCREEN_HEIGHT / bgSize.y);
+    }
 
-    pauseText.setFont(font);
-    pauseText.setCharacterSize(48);
-    pauseText.setFillColor(sf::Color::White);
-    pauseText.setString("PAUSED\n\nPress ENTER to Resume");
-    pauseText.setPosition(SCREEN_WIDTH / 2.f - 150.f, SCREEN_HEIGHT / 2.f - 50.f);
+    darkOverlay.setSize(sf::Vector2f(SCREEN_WIDTH, SCREEN_HEIGHT));
+    darkOverlay.setFillColor(sf::Color(0, 0, 0, 150));
+
+    // Функция центрирования текста
+    auto centerText = [](sf::Text& text, float yOffset) {
+        sf::FloatRect bounds = text.getLocalBounds();
+        text.setOrigin(bounds.left + bounds.width / 2.0f, bounds.top + bounds.height / 2.0f);
+        text.setPosition(SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f + yOffset);
+        };
+
+    // Главное меню
+    menuTitle.setFont(font);
+    menuTitle.setCharacterSize(90);
+    menuTitle.setFillColor(sf::Color::Red);
+    menuTitle.setStyle(sf::Text::Bold);
+    menuTitle.setString("ROOT EVIL");
+    centerText(menuTitle, -180.f);
+
+    menuHint.setFont(font);
+    menuHint.setCharacterSize(36);
+    menuHint.setFillColor(sf::Color::White);
+    menuHint.setString("START GAME\nEXIT");
+    centerText(menuHint, 20.f);
+
+    // Пауза
+    pauseTitle.setFont(font);
+    pauseTitle.setCharacterSize(80);
+    pauseTitle.setFillColor(sf::Color::White);
+    pauseTitle.setStyle(sf::Text::Bold);
+    pauseTitle.setString("PAUSED");
+    centerText(pauseTitle, -80.f);
+
+    pauseHint.setFont(font);
+    pauseHint.setCharacterSize(30);
+    pauseHint.setFillColor(sf::Color::Yellow);
+    pauseHint.setString("RESUME");
+    centerText(pauseHint, 20.f);
 
     // Полоска здоровья
     healthBarBg.setSize(sf::Vector2f(200.f, 20.f));
@@ -68,7 +102,6 @@ Game::Game() : window(sf::VideoMode(SCREEN_WIDTH, SCREEN_HEIGHT), "RootEvil - Ra
     healthBarFill.setPosition(20.f, 50.f);
     healthBarFill.setFillColor(sf::Color::Red);
 
-    // Создание монстров
     enemies.push_back(Enemy(5.5f, 5.5f));
     enemies.push_back(Enemy(10.5f, 10.5f));
     enemies.push_back(Enemy(5.5f, 10.5f));
@@ -86,11 +119,23 @@ void Game::Run() {
 
             if (currentState == GameState::Menu) {
                 if (event.type == sf::Event::KeyPressed) {
-                    if (event.key.code == sf::Keyboard::Enter) {
-                        currentState = GameState::Playing;
-                        sf::Mouse::setPosition(sf::Vector2i(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2), window);
+                    if (event.key.code == sf::Keyboard::Up || event.key.code == sf::Keyboard::W) {
+                        menuSelection--;
+                        if (menuSelection < 0) menuSelection = 1;
                     }
-                    if (event.key.code == sf::Keyboard::Escape) window.close();
+                    if (event.key.code == sf::Keyboard::Down || event.key.code == sf::Keyboard::S) {
+                        menuSelection++;
+                        if (menuSelection > 1) menuSelection = 0;
+                    }
+                    if (event.key.code == sf::Keyboard::Enter) {
+                        if (menuSelection == 0) {
+                            currentState = GameState::Playing;
+                            sf::Mouse::setPosition(sf::Vector2i(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2), window);
+                        }
+                        else {
+                            window.close();
+                        }
+                    }
                 }
             }
             else if (currentState == GameState::Paused) {
@@ -111,18 +156,62 @@ void Game::Run() {
                     player.angle += mouseDeltaX * 0.002f;
                     sf::Mouse::setPosition(sf::Vector2i(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2), window);
                 }
+
+                // --- НОВАЯ ЛОГИКА СТРЕЛЬБЫ ---
+                if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
+                    if (player.canShoot && player.ammo > 0) {
+                        player.Shoot(); // Уменьшаем патроны и включаем вспышку
+
+                        for (auto& enemy : enemies) {
+                            if (!enemy.isAlive) continue;
+
+                            float dx = enemy.position.x - player.position.x;
+                            float dy = enemy.position.y - player.position.y;
+                            float angleToEnemy = std::atan2(dy, dx);
+                            float angleDiff = angleToEnemy - player.angle;
+
+                            while (angleDiff > 3.14159f) angleDiff -= 2.0f * 3.14159f;
+                            while (angleDiff < -3.14159f) angleDiff += 2.0f * 3.14159f;
+
+                            if (std::abs(angleDiff) < 0.15f) {
+                                enemy.health -= SHOTGUN_DAMAGE;
+                                enemy.hitTimer = 0.1f; // Монстр краснеет
+
+                                if (enemy.health <= 0) {
+                                    enemy.isAlive = false;
+                                }
+                                break; // Дробовик бьет только одного
+                            }
+                        }
+                    }
+                }
             }
         }
 
         window.clear(sf::Color(30, 30, 30));
 
         if (currentState == GameState::Menu) {
-            window.draw(menuText);
+            window.draw(menuBgSprite);
+            window.draw(darkOverlay);
+            window.draw(menuTitle);
+
+            if (menuSelection == 0) {
+                menuHint.setString("> START GAME <\n   EXIT   ");
+                menuHint.setFillColor(sf::Color::Yellow);
+            }
+            else {
+                menuHint.setString("   START GAME   \n> EXIT <");
+                menuHint.setFillColor(sf::Color::White);
+            }
+            sf::FloatRect bounds = menuHint.getLocalBounds();
+            menuHint.setOrigin(bounds.left + bounds.width / 2.0f, bounds.top + bounds.height / 2.0f);
+            menuHint.setPosition(SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f + 20.f);
+
+            window.draw(menuHint);
         }
         else if (currentState == GameState::Playing) {
             player.Update(dt, map);
 
-            // Обновление врагов и проверка урона
             for (auto& enemy : enemies) {
                 enemy.Update(dt, player.position);
 
@@ -131,33 +220,13 @@ void Game::Run() {
                 float dist = std::sqrt(dx * dx + dy * dy);
 
                 if (dist < 0.6f && enemy.isAlive) {
-                    player.health -= 0.5f; // Урон каждую долю секунды
+                    player.health -= 0.5f;
                 }
             }
 
             if (player.health <= 0) {
                 player.health = 0;
                 currentState = GameState::GameOver;
-            }
-
-            // Проверка попадания (ЛКМ)
-            if (sf::Mouse::isButtonPressed(sf::Mouse::Left) && player.canShoot && player.ammo > 0) {
-                for (auto& enemy : enemies) {
-                    if (!enemy.isAlive) continue;
-                    float dx = enemy.position.x - player.position.x;
-                    float dy = enemy.position.y - player.position.y;
-                    float angleToEnemy = std::atan2(dy, dx);
-                    float angleDiff = angleToEnemy - player.angle;
-
-                    while (angleDiff > 3.14159f) angleDiff -= 2.0f * 3.14159f;
-                    while (angleDiff < -3.14159f) angleDiff += 2.0f * 3.14159f;
-
-                    if (std::abs(angleDiff) < 0.15f) {
-                        enemy.health -= SHOTGUN_DAMAGE;
-                        if (enemy.health <= 0) enemy.isAlive = false;
-                        break;
-                    }
-                }
             }
 
             CastRays();
@@ -170,16 +239,34 @@ void Game::Run() {
         }
         else if (currentState == GameState::Paused) {
             CastRays();
-            window.draw(pauseText);
+            darkOverlay.setFillColor(sf::Color(0, 0, 0, 180));
+            window.draw(darkOverlay);
+            window.draw(pauseTitle);
+            window.draw(pauseHint);
         }
         else if (currentState == GameState::GameOver) {
-            menuText.setString("YOU DIED\n\nPress ENTER to Restart");
-            window.draw(menuText);
+            window.draw(menuBgSprite);
+            darkOverlay.setFillColor(sf::Color(50, 0, 0, 200));
+            window.draw(darkOverlay);
+
+            menuTitle.setString("YOU DIED");
+            menuHint.setString("RESTART");
+
+            sf::FloatRect bounds = menuHint.getLocalBounds();
+            menuHint.setOrigin(bounds.left + bounds.width / 2.0f, bounds.top + bounds.height / 2.0f);
+            menuHint.setPosition(SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f + 20.f);
+
+            window.draw(menuTitle);
+            window.draw(menuHint);
+
             if (sf::Keyboard::isKeyPressed(sf::Keyboard::Enter)) {
-                // Рестарт игры
                 player = Player();
                 for (auto& e : enemies) e.isAlive = true;
                 currentState = GameState::Playing;
+                window.setMouseCursorVisible(false);
+                sf::Mouse::setPosition(sf::Vector2i(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2), window);
+
+                menuTitle.setString("ROOT EVIL");
             }
         }
 

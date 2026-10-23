@@ -8,14 +8,13 @@ static std::shared_ptr<sf::Texture> sharedEnemyTexture = nullptr;
 
 Enemy::Enemy(float startX, float startY) {
     position = { startX, startY };
-    health = 50;
+    health = 50; // Умирает с 2 выстрелов (25 урона * 2 = 50)
     isAlive = true;
 
     if (!sharedEnemyTexture) {
         sharedEnemyTexture = std::make_shared<sf::Texture>();
         if (!sharedEnemyTexture->loadFromFile("Resources/enemy.png")) {
             std::cout << "FAILED TO LOAD enemy.png!" << std::endl;
-            // Заглушка, если нет картинки
             sf::Image img; img.create(100, 100, sf::Color::Red);
             sharedEnemyTexture->loadFromImage(img);
         }
@@ -25,6 +24,10 @@ Enemy::Enemy(float startX, float startY) {
 
 void Enemy::Update(float dt, sf::Vector2f playerPos) {
     if (!isAlive) return;
+
+    // Уменьшаем таймер покраснения
+    if (hitTimer > 0.f) hitTimer -= dt;
+
     float dx = playerPos.x - position.x;
     float dy = playerPos.y - position.y;
     float distance = std::sqrt(dx * dx + dy * dy);
@@ -62,6 +65,14 @@ void Enemy::Draw(sf::RenderWindow& window, sf::Vector2f playerPos, float playerA
             float posX = screenX - (100.0f * scale) / 2.0f;
             float posY = (SCREEN_HEIGHT / 2.0f) - (100.0f * scale) / 2.0f;
             sprite.setPosition(sf::Vector2f(posX, posY));
+
+            // Меняем цвет на красный, если монстр только что получил урон
+            if (hitTimer > 0.f) {
+                sprite.setColor(sf::Color::Red);
+            }
+            else {
+                sprite.setColor(sf::Color::White);
+            }
 
             if (distCorrected < depthBuffer[screenX]) {
                 window.draw(sprite);

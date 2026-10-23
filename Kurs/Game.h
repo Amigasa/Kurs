@@ -24,12 +24,20 @@ private:
     sf::Text hudText;
     sf::Clock clock;
 
-    // Состояния игры
     GameState currentState = GameState::Menu;
-    sf::Text menuText;
-    sf::Text pauseText;
 
-    // Здоровье
+    // Тексты разделены на заголовки и подсказки
+    sf::Text menuTitle;
+    sf::Text menuHint;
+    sf::Text pauseTitle;
+    sf::Text pauseHint;
+
     sf::RectangleShape healthBarBg;
     sf::RectangleShape healthBarFill;
+
+    sf::Sprite menuBgSprite;
+    sf::Texture menuBgTexture;
+    sf::RectangleShape darkOverlay;
+
+    int menuSelection = 0;
 };

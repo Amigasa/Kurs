@@ -13,13 +13,11 @@ public:
     float health;
     int ammo;
 
-    // Оружие
     sf::Sprite weaponSprite;
     sf::Texture weaponTexture;
     bool canShoot = true;
     float shootTimer = 0.f;
 
-    // Анимация выстрела
     sf::Sprite flashSprite;
     sf::Texture flashTexture;
     float flashTimer = 0.f;
